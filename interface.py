@@ -1,112 +1,119 @@
 from prettytable import PrettyTable
-from service import Player, Question
-from check import check_player_answer, check_player_name
+from service import Player
+import check
+from exceptions import OutOfRangeError, AlreadyChosenError
+
+available_players_quantity = list(range(1, 16))
 
 
-class Game:
-    categories = [
-        "music",
-        "sport_and_leisure",
-        "film_and_tv",
-        "arts_and_literature",
-        "history",
-        "society_and_culture",
-        "science",
-        "geography",
-        "food_and_drink",
-        "general_knowledge",
-    ]
-    difficulties = [
-        "easy",
-        "medium",
-        "hard"
-    ]
-    is_player_right = True
-    change_question = False
+def print_all_categories(question_categories: dict):
+    table = PrettyTable(["Category number", "Category and difficulty"])
+    for key, value in question_categories.items():
+        table.add_row(row=[key, value], divider=True)
+    print(table)
 
-    def __init__(self, number_of_players: int, question_quantity: int):
-        self.number_of_players = number_of_players
-        self.quantity = question_quantity
-        self.players = []
-        self.question_categories = self.set_available_categories()
 
-    def set_available_categories(self):
-        question_categories = []
-        for category in self.categories:
-            for difficulty in self.difficulties:
-                question_categories.append(f'{category}:{difficulty}')
-        question_categories = dict(enumerate(question_categories, 1))
-        return question_categories
+def greeting():
+    print('Hello! Welcome to Quiz Game!')
 
-    def create_players(self):
-        for i in range(1, self.number_of_players + 1):
-            name_for_player = check_player_name(player_number=i)
-            player = Player(name_for_player)
-            self.players.append(player)
 
-    def print_all_categories(self):
-        table = PrettyTable(["Category number", "Category and difficulty"])
-        for key, value in self.question_categories.items():
-            table.add_row(row=[key, value], divider=True)
-        print(table)
+def get_players_number():
+    while True:
+        number_of_players = input('Input number of players: ')
+        try:
+            return check.player_answer(answer=number_of_players, answer_range=available_players_quantity)
+        except ValueError:
+            print('Number of players must be integer')
+        except OutOfRangeError:
+            print('Number of players must be in range 1-30')
 
-    def create_questions(self):
-        for player in self.players:
-            self.change_question_for_player(player=player)
 
-    def change_question_for_player(self, player: Player):
-        self.print_all_categories()
-        user_choice = check_player_answer(
-            input_question=f'Select category and difficulty for player {player.name}: ',
-            answer_range=list(self.question_categories.keys())
-        )
-        category_and_difficulty = self.question_categories.pop(user_choice)
-        category, difficulty = category_and_difficulty.split(':')
-        if player.selected_category_and_difficulty:
-            player.selected_category_and_difficulty.category = category
-            player.selected_category_and_difficulty.difficulty = difficulty
+def get_questions_quantity(number_of_players: int):
+    while True:
+        question_quantity = input('Input question quantity: ')
+        available_questions_quantity = list(range(number_of_players, 31))
+        try:
+            return check.player_answer(answer=question_quantity, answer_range=available_questions_quantity)
+        except ValueError:
+            print('Question quantity must be integer')
+        except OutOfRangeError:
+            print(f'Question quantity must be number from {available_questions_quantity[0]} '
+                  f'to {available_questions_quantity[-1]}')
+
+
+def get_game_settings():
+    number_of_players = get_players_number()
+    question_quantity = get_questions_quantity(number_of_players)
+    return number_of_players, question_quantity
+
+
+def get_player_name(player_number: int):
+    while True:
+        name = input(f'Input name for player {player_number}: ')
+        player_name = check.player_name(name)
+        if player_name:
+            return check.player_name(name)
         else:
-            player.selected_category_and_difficulty = Question(category, difficulty)
+            print('*------------------------*---------------------------*')
+            print('Invalid name, please try again')
+            print('Name must consist of letters only')
+            print('*------------------------*---------------------------*')
 
-    def ask_question(self):
-        for player in self.players:
-            self.is_player_right = True
-            if player.change_question:
-                self.change_question_for_player(player)
-            while self.is_player_right and self.quantity > 0:
-                self.player_move(player=player)
 
-    def print_results(self):
-        print('*** Results ***')
-        for player in self.players:
-            print(f'Player {player.name} - {player.score} points')
+def get_player_answer(player: Player = None, answer_range: list = None):
+    input_question = 'Input answer number: '
+    if answer_range:
+        input_question = f'Select category and difficulty for player \033[1m{player.name}\033[0m: '
+    else:
+        answer_range = list(range(1, 5))
+    while True:
+        player_answer = input(input_question)
+        try:
+            return check.player_answer(answer=player_answer, answer_range=answer_range)
+        except ValueError:
+            print('Answer must be integer')
+        except OutOfRangeError:
+            print(f'Answer must number from {answer_range[0]} to {answer_range[-1]}')
+        except AlreadyChosenError:
+            print('This number already been chosen. Please select available number')
 
-    def player_move(self, player: Player):
-        print(f'Question for player {player.name}:')
-        player.selected_category_and_difficulty.prepare_question()
-        player.selected_category_and_difficulty.print_question()
-        player_answer = check_player_answer(
-            input_question='Input answer number: ',
-            answer_range=list(player.selected_category_and_difficulty.answers.keys())
-        )
-        answer_points = player.selected_category_and_difficulty.check_answer(player_answer)
-        self.check_answer_points(player, answer_points)
 
-    def check_answer_points(self, player: Player, answer_points: int):
-        self.quantity -= 1
-        if answer_points:
-            print('Correct answer!')
-            player.update_score(answer_points)
-            self.change_question_for_player(player) if self.quantity else None
-        else:
-            self.is_player_right = False
-            player.change_question = True
-            print('Incorrect answer')
+def print_question(player: Player, question_dict: dict, answers: dict):
+    print('******************************************************')
+    print(f'Question for player \033[1m{player.name}\033[0m:')
+    question_text = question_dict['question']['text']
+    print('*----------------------------------------------------*')
+    print(question_text)
+    print('*----------------------------------------------------*')
+    print('Answer options:')
+    print('*----------------------------------------------------*')
+    for k, v in answers.items():
+        print(f'{k}. {v}')
+    print('*----------------------------------------------------*')
+    print('******************************************************')
 
-    def start_game(self):
-        self.create_players()
-        self.create_questions()
-        while self.quantity:
-            self.ask_question()
-        self.print_results()
+
+def print_results(players: list):
+    print('The questions are over')
+    print('*** Results ***')
+    table = PrettyTable(["Player", "Total score"])
+    for player in players:
+        table.add_row(row=[player.name, player.score], divider=True)
+    print(table)
+
+
+def print_statistics(question_quantity: int, players: list):
+    print(f'Questions left: {question_quantity}')
+    table = PrettyTable(["Player", "Current score"])
+    for player in players:
+        table.add_row(row=[player.name, player.score], divider=True)
+    print(table)
+
+
+def print_question_correction(answer_points: int, correct_answer: str):
+    if answer_points:
+        print('Correct answer!')
+    else:
+        print('Incorrect answer')
+        print(f'Correct answer is "{correct_answer}"')
 

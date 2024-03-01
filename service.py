@@ -31,17 +31,6 @@ class Question:
             question = i
         self.question_dict = question
 
-    def print_question(self):
-        question_text = self.question_dict['question']['text']
-        print('*----------------------------------------------------*')
-        print(question_text)
-        print('*----------------------------------------------------*')
-        print('Answer options:')
-        print('*----------------------------------------------------*')
-        for k, v in self.answers.items():
-            print(f'{k}. {v}')
-        print('*----------------------------------------------------*')
-
     def check_answer(self, player_answer: int):
         if self.answers[player_answer] == self.correct_answer:
             return self.points
@@ -75,7 +64,6 @@ class Player:
         self.name = name
         self.score = 0
         self.selected_category_and_difficulty = None
-        self.change_question = False
 
     def update_score(self, points: int):
         self.score += points
